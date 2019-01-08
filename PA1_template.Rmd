@@ -11,10 +11,7 @@ hr { border-width: 3px; border-color: #333333; }
 </style>
 
 ## Loading and preprocessing the data
-```{r setup, include=FALSE}
-
-# This section is not included in the output to make debugging easier.
-# The next section has "eval=FALSE" to display the call to load data.
+```{r setup, message=FALSE}
 
 library(plyr)
 library(dplyr)
@@ -27,13 +24,10 @@ library(ggplot2)
 dfRaw <- read.csv(unzip("activity.zip"), header=TRUE, colClasses=c("integer", "Date", "integer"))
 ```
 
-```{r loaddata, eval=FALSE}
-## Load Data
-dfRaw <- read.csv(unzip("activity.zip"), header=TRUE, colClasses=c("integer", "Date", "integer"))
-```
 ***
+
 ## What is mean total number of steps taken per day?
-```{r q1}
+```{r q1, warning=FALSE}
 # remove all NA and make a copy
 dtClean <- data.table(dfRaw[is.na(dfRaw$steps) == FALSE,])
 
@@ -48,9 +42,11 @@ ggplot(data=dtsums) +
     xlab("Date")
 
 # report mean and median of total steps per day
-knitr::kable(
-ddply(dtClean, ~date, summarize, mean=mean(steps), median=median(steps)), caption="Daily Mean and Median")
+dailymean <- mean(dtsums$sum, na.rm=TRUE)
+dailymedian <- median(dtsums$sum, na.rm=TRUE)
 ```
+
+The daily mean is `r format(dailymean, digits=2, big.mark=",")` steps and the daily median is `r format(dailymedian, digits=2, big.mark=",")` steps.
 
 ***
 ## What is the average daily activity pattern?
@@ -63,19 +59,22 @@ plot(dtInt$interval, dtInt$mean, type="l", main="Average Daily Activity Pattern"
 # max mean interval
 maxMean <- dtInt[dtInt$mean == max(dtInt$mean),]
 ```
-The interval `r maxMean$interval` has the maximum mean of `r maxMean$mean`.
+The interval `r format(maxMean$interval, digits=2, big.mark=",")` has the maximum mean of `r format(maxMean$mean, digits=2, big.mark=",")`.
 
 ***
 ## Imputing missing values
 
 The total number of missing values is `r sum(is.na(dfRaw$steps))`.
 
-``` {r q3}
+``` {r q3, warning=FALSE}
 # Make a copy
 dfFull <- data.frame(dfRaw)
 
+# Column bind the interval means
 dfFuller <- cbind(dfFull, dtInt)
+# Fill in the NAs
 dfFuller$steps <- ifelse(is.na(dfFuller$steps), dfFuller$mean, dfFuller$steps)
+# Select the original columns
 dfFull <- dfFuller[, c(1,2,3)]
 
 # summarize by date
@@ -95,7 +94,7 @@ maxMeansAreEqual <- (maxMean$interval == maxMean2$interval & maxMean$mean == max
 
 ```
 
-After imputing missing values the interval `r maxMean$interval` has the maximum average of `r maxMean$mean`.
+After imputing missing values the interval `r format(maxMean$interval, digits=2, big.mark=",")` has the maximum average of `r format(maxMean$mean, digits=2, big.mark=",")`.
 The imputed maximum (impute NAs) and the previous maximum (ignore NAs) are `r ifelse(maxMeansAreEqual, "equal", "not equal")`.
 
 ***
@@ -117,6 +116,6 @@ ggplot(data=dtDayInt, mapping=aes(x=interval,y=mean)) +
     facet_wrap(~day, nrow=2) +
     geom_smooth(se=F, method="loess", formula=y~x) +
     ggtitle("Total Steps Per Day") +
-    ylab("Total Steps") + 
-    xlab("Date")
+    ylab("Average Steps") + 
+    xlab("Interval")
 ```

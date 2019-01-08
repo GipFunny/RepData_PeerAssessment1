@@ -12,13 +12,20 @@ hr { border-width: 3px; border-color: #333333; }
 
 ## Loading and preprocessing the data
 
-
-
 ```r
+library(plyr)
+library(dplyr)
+library(tidyverse)
+library(data.table)
+library(lubridate)
+library(ggplot2)
+
 ## Load Data
 dfRaw <- read.csv(unzip("activity.zip"), header=TRUE, colClasses=c("integer", "Date", "integer"))
 ```
+
 ***
+
 ## What is mean total number of steps taken per day?
 
 ```r
@@ -36,77 +43,15 @@ ggplot(data=dtsums) +
     xlab("Date")
 ```
 
-```
-## Warning: Ignoring unknown parameters: binwidth, bins, pad
-```
-
 ![](PA1_template_files/figure-html/q1-1.png)<!-- -->
 
 ```r
 # report mean and median of total steps per day
-knitr::kable(
-ddply(dtClean, ~date, summarize, mean=mean(steps), median=median(steps)), caption="Daily Mean and Median")
+dailymean <- mean(dtsums$sum, na.rm=TRUE)
+dailymedian <- median(dtsums$sum, na.rm=TRUE)
 ```
 
-
-
-Table: Daily Mean and Median
-
-date                mean   median
------------  -----------  -------
-2012-10-02     0.4375000        0
-2012-10-03    39.4166667        0
-2012-10-04    42.0694444        0
-2012-10-05    46.1597222        0
-2012-10-06    53.5416667        0
-2012-10-07    38.2465278        0
-2012-10-09    44.4826389        0
-2012-10-10    34.3750000        0
-2012-10-11    35.7777778        0
-2012-10-12    60.3541667        0
-2012-10-13    43.1458333        0
-2012-10-14    52.4236111        0
-2012-10-15    35.2048611        0
-2012-10-16    52.3750000        0
-2012-10-17    46.7083333        0
-2012-10-18    34.9166667        0
-2012-10-19    41.0729167        0
-2012-10-20    36.0937500        0
-2012-10-21    30.6284722        0
-2012-10-22    46.7361111        0
-2012-10-23    30.9652778        0
-2012-10-24    29.0104167        0
-2012-10-25     8.6527778        0
-2012-10-26    23.5347222        0
-2012-10-27    35.1354167        0
-2012-10-28    39.7847222        0
-2012-10-29    17.4236111        0
-2012-10-30    34.0937500        0
-2012-10-31    53.5208333        0
-2012-11-02    36.8055556        0
-2012-11-03    36.7048611        0
-2012-11-05    36.2465278        0
-2012-11-06    28.9375000        0
-2012-11-07    44.7326389        0
-2012-11-08    11.1770833        0
-2012-11-11    43.7777778        0
-2012-11-12    37.3784722        0
-2012-11-13    25.4722222        0
-2012-11-15     0.1423611        0
-2012-11-16    18.8923611        0
-2012-11-17    49.7881944        0
-2012-11-18    52.4652778        0
-2012-11-19    30.6979167        0
-2012-11-20    15.5277778        0
-2012-11-21    44.3993056        0
-2012-11-22    70.9270833        0
-2012-11-23    73.5902778        0
-2012-11-24    50.2708333        0
-2012-11-25    41.0902778        0
-2012-11-26    38.7569444        0
-2012-11-27    47.3819444        0
-2012-11-28    35.3576389        0
-2012-11-29    24.4687500        0
+The daily mean is 10,766 steps and the daily median is 10,765 steps.
 
 ***
 ## What is the average daily activity pattern?
@@ -124,7 +69,7 @@ plot(dtInt$interval, dtInt$mean, type="l", main="Average Daily Activity Pattern"
 # max mean interval
 maxMean <- dtInt[dtInt$mean == max(dtInt$mean),]
 ```
-The interval 835 has the maximum mean of 206.1698113.
+The interval 835 has the maximum mean of 206.
 
 ***
 ## Imputing missing values
@@ -136,8 +81,11 @@ The total number of missing values is 2304.
 # Make a copy
 dfFull <- data.frame(dfRaw)
 
+# Column bind the interval means
 dfFuller <- cbind(dfFull, dtInt)
+# Fill in the NAs
 dfFuller$steps <- ifelse(is.na(dfFuller$steps), dfFuller$mean, dfFuller$steps)
+# Select the original columns
 dfFull <- dfFuller[, c(1,2,3)]
 
 # summarize by date
@@ -151,10 +99,6 @@ ggplot(data=dtsums2) +
     xlab("Date")
 ```
 
-```
-## Warning: Ignoring unknown parameters: binwidth, bins, pad
-```
-
 ![](PA1_template_files/figure-html/q3-1.png)<!-- -->
 
 ```r
@@ -164,7 +108,7 @@ maxMean2 <- dtInt[dtInt$mean == max(dtInt$mean),]
 maxMeansAreEqual <- (maxMean$interval == maxMean2$interval & maxMean$mean == maxMean2$mean)
 ```
 
-After imputing missing values the interval 835 has the maximum average of 206.1698113.
+After imputing missing values the interval 835 has the maximum average of 206.
 The imputed maximum (impute NAs) and the previous maximum (ignore NAs) are equal.
 
 ***
@@ -187,8 +131,8 @@ ggplot(data=dtDayInt, mapping=aes(x=interval,y=mean)) +
     facet_wrap(~day, nrow=2) +
     geom_smooth(se=F, method="loess", formula=y~x) +
     ggtitle("Total Steps Per Day") +
-    ylab("Total Steps") + 
-    xlab("Date")
+    ylab("Average Steps") + 
+    xlab("Interval")
 ```
 
 ![](PA1_template_files/figure-html/q4-1.png)<!-- -->
