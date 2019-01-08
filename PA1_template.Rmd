@@ -1,25 +1,106 @@
 ---
 title: "Reproducible Research: Peer Assessment 1"
+author: "GipFunny"
 output: 
-  html_document:
-    keep_md: true
+    html_document: 
+        keep_md: true
 ---
 
-
 ## Loading and preprocessing the data
+```{r setup, include=FALSE}
+library(plyr)
+library(dplyr)
+library(tidyverse)
+library(data.table)
+library(lubridate)
+library(ggplot2)
 
+## Load Data - This is run in setup chunk not eval=FALSE chunk.
+dfRaw <- read.csv(unzip("activity.zip"), header=TRUE, colClasses=c("integer", "Date", "integer"))
+```
 
-
+```{r loaddata, eval=FALSE}
+## Load Data
+dfRaw <- read.csv(unzip("activity.zip"), header=TRUE, colClasses=c("integer", "Date", "integer"))
+```
+***
 ## What is mean total number of steps taken per day?
+```{r q1}
+# ignore NA
+dtClean <- data.table(dfRaw[is.na(dfRaw$steps) == FALSE,])
 
+# summarize by date
+dtsums <- ddply(dtClean, ~date, summarize, sum=sum(steps))
 
+# plot
+ggplot(data=dtsums, mapping=aes(x=date,y=sum)) + 
+    geom_bar(stat="identity") +
+    ggtitle("Total Steps Per Day") +
+    ylab("Total Steps") + 
+    xlab("Date")
 
+# report mean and median of total steps per day
+knitr::kable(
+ddply(dtClean, ~date, summarize, mean=mean(steps), median=median(steps)), caption="Daily Mean and Median")
+```
+
+***
 ## What is the average daily activity pattern?
+```{r q2}
+#dt <- data.table(dfRaw[is.na(dfRaw$steps) == FALSE,])
 
+dtInt <- ddply(dfRaw, ~interval, summarize, mean=mean(steps, na.rm=T))
 
+plot(dtInt$interval, dtInt$mean, type="l", main="Average Daily Activity Pattern", xlab="Interval", ylab="Average Steps")
 
+# max mean interval
+maxMean <- dtInt[dtInt$mean == max(dtInt$mean),]
+```
+The interval `r maxMean$interval` has the maximum mean of `r maxMean$mean`.
+
+***
 ## Imputing missing values
 
+The total number of missing values is `r sum(is.na(dfRaw$steps))`.
 
+``` {r q3}
+# Make a copy
+dfFull <- data.frame(dfRaw)
 
+dfFuller <- cbind(dfFull, dtInt)
+dfFuller$steps <- ifelse(is.na(dfFuller$steps), dfFuller$mean, dfFuller$steps)
+dfFull <- dfFuller[, c(1,2,3)]
+
+# summarize by date
+dtsums2 <- ddply(dfFull, ~date, summarize, sum=sum(steps))
+
+# plot
+ggplot(data=dtsums2, mapping=aes(x=date,y=sum)) + 
+    geom_bar(stat="identity") +
+    ggtitle("Total Steps Per Day") +
+    ylab("Total Steps") + 
+    xlab("Date")
+
+maxMean <- dtInt[dtInt$mean == max(dtInt$mean),]
+```
+
+After imputing missing values the interval `r maxMean$interval` has the maximum average of `r maxMean$mean`.
+
+***
 ## Are there differences in activity patterns between weekdays and weekends?
+
+```{r q4}
+# Weekdays
+dfWeekDays <- data.frame(dfRaw)
+dfWeekDays$day <- as.factor( ifelse(weekdays(dfWeekDays$date) %in% c("Saturday","Sunday"), "Weekend", "Weekday"))
+
+dtDayInt <- ddply(dfWeekDays, ~interval+day, summarize, mean=mean(steps, na.rm=T))
+
+ggplot(data=dtDayInt, mapping=aes(x=interval,y=mean)) + 
+    geom_line() +
+    facet_wrap(~day, nrow=2) +
+    geom_smooth(se=F, method="loess", formula=y~x) +
+    ggtitle("Total Steps Per Day") +
+    ylab("Total Steps") + 
+    xlab("Date")
+```
