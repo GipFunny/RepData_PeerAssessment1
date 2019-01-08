@@ -6,7 +6,12 @@ output:
         keep_md: true
 ---
 
+<style>
+hr { border-width: 3px; border-color: #333333; }
+</style>
+
 ## Loading and preprocessing the data
+
 
 
 ```r
@@ -17,18 +22,22 @@ dfRaw <- read.csv(unzip("activity.zip"), header=TRUE, colClasses=c("integer", "D
 ## What is mean total number of steps taken per day?
 
 ```r
-# ignore NA
+# remove all NA and make a copy
 dtClean <- data.table(dfRaw[is.na(dfRaw$steps) == FALSE,])
 
 # summarize by date
 dtsums <- ddply(dtClean, ~date, summarize, sum=sum(steps))
 
 # plot
-ggplot(data=dtsums, mapping=aes(x=date,y=sum)) + 
-    geom_bar(stat="identity") +
+ggplot(data=dtsums) + 
+    geom_histogram(stat="identity", mapping=aes(x=date,y=sum)) +
     ggtitle("Total Steps Per Day") +
     ylab("Total Steps") + 
     xlab("Date")
+```
+
+```
+## Warning: Ignoring unknown parameters: binwidth, bins, pad
 ```
 
 ![](PA1_template_files/figure-html/q1-1.png)<!-- -->
@@ -103,8 +112,7 @@ date                mean   median
 ## What is the average daily activity pattern?
 
 ```r
-#dt <- data.table(dfRaw[is.na(dfRaw$steps) == FALSE,])
-
+# calculate mean by interval
 dtInt <- ddply(dfRaw, ~interval, summarize, mean=mean(steps, na.rm=T))
 
 plot(dtInt$interval, dtInt$mean, type="l", main="Average Daily Activity Pattern", xlab="Interval", ylab="Average Steps")
@@ -136,20 +144,28 @@ dfFull <- dfFuller[, c(1,2,3)]
 dtsums2 <- ddply(dfFull, ~date, summarize, sum=sum(steps))
 
 # plot
-ggplot(data=dtsums2, mapping=aes(x=date,y=sum)) + 
-    geom_bar(stat="identity") +
+ggplot(data=dtsums2) + 
+    geom_histogram(stat="identity", mapping=aes(x=date,y=sum)) +
     ggtitle("Total Steps Per Day") +
     ylab("Total Steps") + 
     xlab("Date")
 ```
 
+```
+## Warning: Ignoring unknown parameters: binwidth, bins, pad
+```
+
 ![](PA1_template_files/figure-html/q3-1.png)<!-- -->
 
 ```r
-maxMean <- dtInt[dtInt$mean == max(dtInt$mean),]
+# Get the maximum mean observation
+maxMean2 <- dtInt[dtInt$mean == max(dtInt$mean),]
+
+maxMeansAreEqual <- (maxMean$interval == maxMean2$interval & maxMean$mean == maxMean2$mean)
 ```
 
 After imputing missing values the interval 835 has the maximum average of 206.1698113.
+The imputed maximum (impute NAs) and the previous maximum (ignore NAs) are equal.
 
 ***
 ## Are there differences in activity patterns between weekdays and weekends?
@@ -158,10 +174,14 @@ After imputing missing values the interval 835 has the maximum average of 206.16
 ```r
 # Weekdays
 dfWeekDays <- data.frame(dfRaw)
-dfWeekDays$day <- as.factor( ifelse(weekdays(dfWeekDays$date) %in% c("Saturday","Sunday"), "Weekend", "Weekday"))
 
+# add weekday factor
+dfWeekDays$day <- as.factor(ifelse(weekdays(dfWeekDays$date) %in% c("Saturday","Sunday"),"Weekend","Weekday"))
+
+# calculate mean by interval and day
 dtDayInt <- ddply(dfWeekDays, ~interval+day, summarize, mean=mean(steps, na.rm=T))
 
+# plot with data and smooth line to highlight any pattern differences
 ggplot(data=dtDayInt, mapping=aes(x=interval,y=mean)) + 
     geom_line() +
     facet_wrap(~day, nrow=2) +
